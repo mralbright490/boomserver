@@ -1,12 +1,12 @@
-; BoomServer Installer Script for AP DreamStudios
-; Author: Macro
+; BoomServer Installer Script 
+; Author: Albright
 
 [Setup]
 AppName=BoomServer
-AppVersion=1.0.1
+AppVersion=1.0.3
 DefaultDirName={autopf}\BoomServer
 DefaultGroupName=BoomServer
-OutputBaseFilename=boomserver-v1.0.1-setup
+OutputBaseFilename=boomserver-v1.0.3-setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -16,13 +16,16 @@ Name: "{app}\bin"
 
 [Files]
 ; Using {#SourcePath} which resolves to the directory containing this script.
+; --- Main Runtimes ---
 Source: "{#SourcePath}\build_assets\node.exe"; DestDir: "{app}\bin";
+Source: "{#SourcePath}\build_assets\ffmpeg.exe"; DestDir: "{app}\bin";
+Source: "{#SourcePath}\build_assets\ffprobe.exe"; DestDir: "{app}\bin";
+Source: "{#SourcePath}\build_assets\ffplay.exe"; DestDir: "{app}\bin";
 
+; --- Application Code ---
 Source: "{#SourcePath}\backend\*"; DestDir: "{app}\backend"; Excludes: "node_modules"; Flags: recursesubdirs
 Source: "{#SourcePath}\backend\node_modules\*"; DestDir: "{app}\backend\node_modules"; Flags: recursesubdirs
-
 Source: "{#SourcePath}\frontend\dist\*"; DestDir: "{app}\frontend\dist"; Flags: recursesubdirs
-
 Source: "{#SourcePath}\run-boomserver.bat"; DestDir: "{app}";
 
 [Icons]

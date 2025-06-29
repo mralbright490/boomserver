@@ -9,58 +9,69 @@ const path = require('path');
 const { execFile } = require('child_process');
 const db = require('../database');
 
-const FFPROBE_PATH = 'C:\\Users\\RArtu\\Documents\\ffmpeg-7.1.1-essentials_build\\bin\\ffprobe.exe';
-const SUPPORTED_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.webm'];
+// DYNAMICALLY find the path to our bundled ffprobe.exe
+// This navigates from this script's location up to the root install folder and into the /bin folder.
+const FFPROBE_PATH = path.join(__dirname, '..', '..', '..', 'bin', 'ffprobe.exe');
+const SUPPORTED_EXTENSIONS = ['.mp4', '.mkv', '..avi', '.mov', '.webm'];
 
 async function runLibraryScan() {
-  console.log('[SCANNER] Starting library scan...');
-  const libraryPaths = await db.getLibraryPaths();
-  if (libraryPaths.length === 0) {
-    console.log('[SCANNER] No library paths configured. Scan skipped.');
-    return;
-  }
+    console.log('[SCANNER] Starting library scan...');
+    const libraryPaths = await db.getLibraryPaths();
+    if (libraryPaths.length === 0) {
+        console.log('[SCANNER] No library paths configured. Scan skipped.');
+        return;
+    }
 
-  for (const library of libraryPaths) {
-    await scanDirectory(library.path);
-  }
-  console.log('[SCANNER] Library scan finished.');
+    // Check if ffprobe.exe exists at the dynamic path before starting
+    try {
+        await fs.access(FFPROBE_PATH);
+    } catch {
+        console.error(`[SCANNER] CRITICAL ERROR: ffprobe.exe not found at the expected path: ${FFPROBE_PATH}`);
+        console.error('[SCANNER] Cannot process media files. Halting scan.');
+        return;
+    }
+
+    for (const library of libraryPaths) {
+        await scanDirectory(library.path);
+    }
+    console.log('[SCANNER] Library scan finished.');
 }
 
 async function scanDirectory(directoryPath) {
-  try {
-    const entries = await fs.readdir(directoryPath, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(directoryPath, entry.name);
-      if (entry.isDirectory()) {
-        await scanDirectory(fullPath); // Recurse into subdirectories
-      } else if (SUPPORTED_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
-        const existingFile = await db.getMediaByPath(fullPath);
-        if (!existingFile) {
-          const duration = await getMediaDuration(fullPath);
-          if (duration) {
-            console.log(`[SCANNER] Indexing new file: ${entry.name}`);
-            await db.addMediaFile({ path: fullPath, fileName: entry.name, duration: duration });
-          }
+    try {
+        const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(directoryPath, entry.name);
+            if (entry.isDirectory()) {
+                await scanDirectory(fullPath); // Recurse into subdirectories
+            } else if (SUPPORTED_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
+                const existingFile = await db.getMediaByPath(fullPath);
+                if (!existingFile) {
+                    const duration = await getMediaDuration(fullPath);
+                    if (duration) {
+                        console.log(`[SCANNER] Indexing new file: ${entry.name}`);
+                        await db.addMediaFile({ path: fullPath, fileName: entry.name, duration: duration });
+                    }
+                }
+            }
         }
-      }
+    } catch (error) {
+        console.error(`[SCANNER] Error scanning directory ${directoryPath}. Please ensure the path is correct and accessible. Details:`, error.message);
     }
-  } catch (error) {
-    console.error(`[SCANNER] Error scanning directory ${directoryPath}:`, error);
-  }
 }
 
 function getMediaDuration(filePath) {
-  return new Promise((resolve) => {
-    const args = ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath];
-    execFile(FFPROBE_PATH, args, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`[FFPROBE] Error probing ${filePath}:`, stderr);
-        resolve(null);
-        return;
-      }
-      resolve(parseFloat(stdout));
+    return new Promise((resolve) => {
+        const args = ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath];
+        execFile(FFPROBE_PATH, args, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`[FFPROBE] Error probing ${filePath}:`, stderr);
+                resolve(null);
+                return;
+            }
+            resolve(parseFloat(stdout));
+        });
     });
-  });
 }
 
 module.exports = { runLibraryScan };
