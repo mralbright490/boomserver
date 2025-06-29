@@ -1,0 +1,21 @@
+# Node.js and dependencies
+/backend/node_modules/
+/frontend/node_modules/
+
+# Build artifacts and compiled output
+/Output/
+/frontend/dist/
+*.exe
+*.log
+
+# Local user data and databases
+# Using these patterns will ignore these files in ANY folder.
+library.db
+library.db.json
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Editor configuration
+.vscode/
