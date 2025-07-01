@@ -35,6 +35,17 @@ fastify.get('/api/media', async () => db.getMediaFiles());
 fastify.put('/api/media/:id', async (req) => db.updateMediaFile(req.params.id, req.body));
 fastify.delete('/api/media/:id', async (req) => db.deleteMediaFile(req.params.id));
 
+// NEW: Shutdown endpoint
+fastify.post('/api/shutdown', async (req, reply) => {
+    fastify.log.info('Received shutdown request. Shutting down server...');
+    reply.send({ message: 'Shutting down BoomServer.' });
+    // Give the response a moment to send before exiting
+    setTimeout(() => {
+        process.exit(0); // Gracefully exit the Node.js process
+    }, 500); 
+});
+
+
 const start = async () => {
   try {
     db.initialize();

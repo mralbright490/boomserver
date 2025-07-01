@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Box, Tabs, Tab, Container, Typography } from '@mui/material';
 import LibrarySettings from './components/LibrarySettings';
 import LibraryViewer from './components/LibraryViewer';
@@ -37,10 +37,21 @@ const vaporwaveTheme = createTheme({
 
 function App() {
   const [currentTab, setCurrentTab] = useState(0);
+  // State to trigger refresh in LibraryViewer
+  const [libraryRefreshTrigger, setLibraryRefreshTrigger] = useState(0);
 
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
+    // If switching TO the Library tab, trigger a refresh
+    if (newValue === 0) {
+      setLibraryRefreshTrigger(prev => prev + 1);
+    }
   };
+
+  // Callback for LibrarySettings to signal a library update (scan or purge)
+  const handleLibraryUpdate = useCallback(() => {
+    setLibraryRefreshTrigger(prev => prev + 1);
+  }, []);
 
   return (
     <ThemeProvider theme={vaporwaveTheme}>
@@ -51,7 +62,7 @@ function App() {
             //-- BoomServer --//
           </Typography>
           <Typography color="text.secondary">
-            Media Asset Management for Project: BombCast
+            Media Asset Management for Project: <span style={{color: '#ff79c6'}}>Bomcast</span> {/* Corrected spelling to Bomcast (without the 'b') */}
           </Typography>
         </Box>
 
@@ -64,10 +75,10 @@ function App() {
           </Box>
 
           <Box sx={{ pt: 2 }} hidden={currentTab !== 0}>
-            <LibraryViewer />
+            <LibraryViewer refreshTrigger={libraryRefreshTrigger} />
           </Box>
           <Box sx={{ pt: 2 }} hidden={currentTab !== 1}>
-            <LibrarySettings />
+            <LibrarySettings onLibraryUpdate={handleLibraryUpdate} />
           </Box>
         </Box>
       </Container>

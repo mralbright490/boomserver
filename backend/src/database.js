@@ -14,6 +14,7 @@ const adapter = new FileSync(DB_PATH);
 const db = low(adapter);
 
 function initialize() {
+    // Ensure defaults are set to create the 'media_files' array if it doesn't exist
     db.defaults({ library_paths: [], media_files: [] }).write();
     console.log(`[DATABASE] Database ready at: ${DB_PATH}`);
 }
@@ -34,7 +35,16 @@ const deleteLibraryPath = (id) => {
 const getMediaByPath = (filePath) => db.get('media_files').find({ path: filePath }).value();
 
 const addMediaFile = (file) => {
-    const newFile = { id: Date.now(), ...file, title: file.fileName, summary: '' };
+    const newFile = { 
+        id: Date.now(), 
+        ...file, 
+        title: file.fileName, 
+        summary: '',
+        category: 'Uncategorized', 
+        showName: '',
+        season: '',
+        episode: ''
+    };
     db.get('media_files').push(newFile).write();
     return newFile;
 };
@@ -44,7 +54,14 @@ const getMediaFiles = () => db.get('media_files').sortBy('file_name').value();
 const updateMediaFile = (id, data) => {
     db.get('media_files')
       .find({ id: parseInt(id) })
-      .assign({ title: data.title, summary: data.summary })
+      .assign({ 
+          title: data.title, 
+          summary: data.summary,
+          category: data.category,
+          showName: data.showName,
+          season: data.season,
+          episode: data.episode
+        })
       .write();
     return { updated: 1 };
 };
@@ -55,8 +72,8 @@ const deleteMediaFile = (id) => {
 };
 
 const purgeMediaStore = async () => {
-    db.data.media_files = [];
-    await db.write();
+    // THE FIX: Use db.set to explicitly set 'media_files' to an empty array.
+    db.set('media_files', []).write(); 
     console.log('[DATABASE] Media store has been purged.');
     return { message: 'Media library purged successfully.' };
 };
@@ -67,6 +84,7 @@ module.exports = { 
     addLibraryPath, 
     deleteLibraryPath, 
     getMediaByPath, 
+    addMediaFile, 
     addMediaFile, 
     getMediaFiles, 
     updateMediaFile,

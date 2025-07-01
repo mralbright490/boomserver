@@ -1,12 +1,13 @@
-; BoomServer Installer Script 
+; BoomServer Installer Script
 ; Author: Albright
 
 [Setup]
 AppName=BoomServer
-AppVersion=1.0.3
+AppVersion=1.0.4
 DefaultDirName={autopf}\BoomServer
 DefaultGroupName=BoomServer
-OutputBaseFilename=boomserver-v1.0.3-setup
+OutputBaseFilename=boomserver-v1.0.4-setup
+SetupIconFile={#SourcePath}build_assets\app_icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

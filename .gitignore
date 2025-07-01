@@ -19,3 +19,6 @@ Thumbs.db
 
 # Editor configuration
 .vscode/
+
+# Installer files
+boomserver_installer.iss
