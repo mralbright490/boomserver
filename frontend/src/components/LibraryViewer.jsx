@@ -11,14 +11,13 @@ import {
   Paper,
   CircularProgress,
   IconButton,
-  Collapse, // Added for collapsible sections
-  Hidden, // Added for responsive table headers
+  Collapse,
 } from '@mui/material';
 import {
-  DeleteForever as DeleteForeverIcon, // Renamed for clarity
-  ExpandMore as ExpandMoreIcon,      // Added for expand/collapse
-  ChevronRight as ChevronRightIcon, // Added for expand/collapse
-} from '@mui/icons-material'; // Consolidated imports
+  DeleteForever as DeleteForeverIcon,
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon,
+} from '@mui/icons-material';
 import MediaEditor from './MediaEditor';
 
 const API_URL = 'http://localhost:8000';
@@ -28,33 +27,17 @@ function LibraryViewer({ refreshTrigger }) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [expandedShows, setExpandedShows] = useState({}); // State for expanding TV shows
-  const [expandedSeasons, setExpandedSeasons] = useState({}); // State for expanding seasons
+  const [expandedCategories, setExpandedCategories] = useState({}); // NEW: State for expanding/collapsing any category
+  const [expandedShows, setExpandedShows] = useState({}); // Still needed for nested TV Show seasons
+  const [expandedSeasons, setExpandedSeasons] = useState({}); // Still needed for nested TV Show seasons
 
   const fetchMedia = () => {
     setIsLoading(true);
     fetch(`${API_URL}/api/media`)
       .then(res => res.json())
       .then(data => {
-        // Sort media to ensure proper grouping order
-        const sortedData = data.sort((a, b) => {
-          // Primary sort by category
-          if (a.category === 'TV Show' && b.category !== 'TV Show') return -1;
-          if (a.category !== 'TV Show' && b.category === 'TV Show') return 1;
-          if (a.category === 'Ad Bump' && b.category !== 'Ad Bump') return -1;
-          if (a.category !== 'Ad Bump' && b.category === 'Ad Bump') return 1;
-
-          // For TV Shows, sort by showName, then season (numeric), then episode (numeric)
-          if (a.category === 'TV Show' && b.category === 'TV Show') {
-            if (a.showName !== b.showName) return a.showName.localeCompare(b.showName);
-            if (parseInt(a.season) !== parseInt(b.season)) return parseInt(a.season) - parseInt(b.season);
-            return parseInt(a.episode) - parseInt(b.episode);
-          }
-
-          // Default sort for other categories (e.g., Uncategorized, Ad Bump) by title/filename
-          return (a.title || a.file_name).localeCompare(b.title || b.file_name);
-        });
-        setMedia(sortedData);
+        // No pre-sorting here, sorting for display will happen after grouping
+        setMedia(data);
         setIsLoading(false);
       })
       .catch(error => {
@@ -63,7 +46,6 @@ function LibraryViewer({ refreshTrigger }) {
       });
   };
 
-  // Re-fetch media whenever refreshTrigger changes
   useEffect(() => {
     fetchMedia();
   }, [refreshTrigger]);
@@ -116,22 +98,27 @@ function LibraryViewer({ refreshTrigger }) {
     return parts.join(':');
   };
 
-  // Grouping logic
-  const groupedMedia = media.reduce((acc, file) => {
-    if (file.category === 'TV Show') {
-      acc.tvShows = acc.tvShows || {};
-      acc.tvShows[file.showName] = acc.tvShows[file.showName] || {};
-      acc.tvShows[file.showName][file.season] = acc.tvShows[file.showName][file.season] || [];
-      acc.tvShows[file.showName][file.season].push(file);
-    } else {
-      acc.otherCategories = acc.otherCategories || {};
-      acc.otherCategories[file.category] = acc.otherCategories[file.category] || [];
-      acc.otherCategories[file.category].push(file);
-    }
+  // NEW: Group media by category
+  const groupedByCategory = media.reduce((acc, file) => {
+    acc[file.category] = acc[file.category] || [];
+    acc[file.category].push(file);
     return acc;
-  }, { tvShows: {}, otherCategories: {} });
+  }, {});
 
-  // Toggle handlers for expanding/collapsing
+  // NEW: Define custom order for categories
+  const categoryDisplayOrder = ['Uncategorized', 'Ad Bump', 'TV Show']; // Uncategorized first, then Ad Bump, then TV Show
+  const otherCategories = Object.keys(groupedByCategory).filter(cat => !categoryDisplayOrder.includes(cat)).sort(); // Sort others alphabetically
+  const orderedCategoryNames = [...categoryDisplayOrder.filter(cat => groupedByCategory[cat]), ...otherCategories.filter(cat => groupedByCategory[cat])];
+
+  // Toggle handlers for expanding/collapsing categories
+  const handleToggleCategory = (categoryName) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryName]: !prev[categoryName],
+    }));
+  };
+
+  // Toggle handlers for expanding/collapsing TV Show seasons (existing logic)
   const handleToggleShow = (showName) => {
     setExpandedShows(prev => ({
       ...prev,
@@ -163,81 +150,16 @@ function LibraryViewer({ refreshTrigger }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* Render TV Shows */}
-            {Object.entries(groupedMedia.tvShows).sort(([a], [b]) => a.localeCompare(b)).map(([showName, seasons]) => (
-              <React.Fragment key={showName}>
-                <TableRow sx={{ bgcolor: 'action.hover' }}>
-                  <TableCell colSpan={5} onClick={() => handleToggleShow(showName)} sx={{ cursor: 'pointer' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {expandedShows[showName] ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-                      <Typography variant="subtitle1" sx={{ ml: 1, fontWeight: 'bold', color: 'primary.main' }}>
-                        {showName}
-                      </Typography>
-                    </Box>
-                  </TableCell>
+            {orderedCategoryNames.length === 0 && media.length > 0 ? (
+                // Fallback for uncategorized if no explicit categories are found
+                <TableRow>
+                    <TableCell colSpan={5} align="center">
+                        <Typography variant="body1" color="text.secondary" sx={{ py: 3 }}>
+                            No categorized media found. Ensure files are categorized in their editor.
+                        </Typography>
+                    </TableCell>
                 </TableRow>
-                <Collapse in={expandedShows[showName]} timeout="auto" unmountOnExit>
-                  {Object.entries(seasons).sort(([a], [b]) => parseInt(a) - parseInt(b)).map(([seasonNum, episodes]) => (
-                    <React.Fragment key={`${showName}-${seasonNum}`}>
-                      <TableRow sx={{ bgcolor: 'action.selected' }}>
-                        <TableCell colSpan={5} onClick={() => handleToggleSeason(showName, seasonNum)} sx={{ pl: 4, cursor: 'pointer' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            {expandedSeasons[`${showName}-${seasonNum}`] ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-                            <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 'bold', color: 'secondary.main' }}>
-                              Season {seasonNum}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                      <Collapse in={expandedSeasons[`${showName}-${seasonNum}`]} timeout="auto" unmountOnExit>
-                        {episodes.sort((a, b) => parseInt(a.episode) - parseInt(b.episode)).map((file) => (
-                          <TableRow key={file.id} hover onClick={() => handleRowClick(file)} sx={{ cursor: 'pointer' }}>
-                            <TableCell sx={{ pl: 8 }}>{file.title || `Episode ${file.episode}`}</TableCell>
-                            <TableCell>{file.category}</TableCell>
-                            <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{file.file_name}</TableCell>
-                            <TableCell align="right">{formatDuration(file.duration)}</TableCell>
-                            <TableCell align="center">
-                              <IconButton aria-label="delete" color="secondary" onClick={(e) => handleDeleteMedia(file.id, e)} title="Remove from library">
-                                <DeleteForeverIcon />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </Collapse>
-                    </React.Fragment>
-                  ))}
-                </Collapse>
-              </React.Fragment>
-            ))}
-
-            {/* Render Other Categories (Uncategorized, Ad Bump, etc.) */}
-            {Object.entries(groupedMedia.otherCategories).sort(([a], [b]) => a.localeCompare(b)).map(([categoryName, files]) => (
-                <React.Fragment key={categoryName}>
-                    <TableRow sx={{ bgcolor: 'action.hover' }}>
-                        <TableCell colSpan={5}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                {categoryName}
-                            </Typography>
-                        </TableCell>
-                    </TableRow>
-                    {files.map((file) => (
-                        <TableRow key={file.id} hover onClick={() => handleRowClick(file)} sx={{ cursor: 'pointer' }}>
-                            <TableCell sx={{ pl: 4 }}>{file.title || file.file_name}</TableCell>
-                            <TableCell>{file.category}</TableCell>
-                            <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{file.file_name}</TableCell>
-                            <TableCell align="right">{formatDuration(file.duration)}</TableCell>
-                            <TableCell align="center">
-                                <IconButton aria-label="delete" color="secondary" onClick={(e) => handleDeleteMedia(file.id, e)} title="Remove from library">
-                                    <DeleteForeverIcon />
-                                </IconButton>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </React.Fragment>
-            ))}
-
-            {/* Handle case where no media is found */}
-            {media.length === 0 && (
+            ) : orderedCategoryNames.length === 0 && media.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} align="center">
                         <Typography variant="body1" color="text.secondary" sx={{ py: 3 }}>
@@ -245,6 +167,114 @@ function LibraryViewer({ refreshTrigger }) {
                         </Typography>
                     </TableCell>
                 </TableRow>
+            ) : (
+                orderedCategoryNames.map(categoryName => {
+                    const categoryFiles = groupedByCategory[categoryName].sort((a, b) => (a.title || a.file_name).localeCompare(b.title || b.file_name)); // Sort files within category alphabetically
+                    const isCategoryExpanded = expandedCategories[categoryName];
+
+                    if (categoryName === 'TV Show') {
+                        // Special handling for TV Shows (nested grouping by showName/season)
+                        const tvShowsGrouped = categoryFiles.reduce((acc, file) => {
+                            acc[file.showName] = acc[file.showName] || {};
+                            acc[file.showName][file.season] = acc[file.showName][file.season] || [];
+                            acc[file.showName][file.season].push(file);
+                            return acc;
+                        }, {});
+
+                        return (
+                            <React.Fragment key={categoryName}>
+                                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                    <TableCell colSpan={5} onClick={() => handleToggleCategory(categoryName)} sx={{ cursor: 'pointer' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            {isCategoryExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                            <Typography variant="subtitle1" sx={{ ml: 1, fontWeight: 'bold', color: 'primary.main' }}>
+                                                {categoryName}
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
+                                <Collapse in={isCategoryExpanded} timeout="auto" unmountOnExit>
+                                    {Object.entries(tvShowsGrouped).sort(([a], [b]) => a.localeCompare(b)).map(([showName, seasons]) => (
+                                        <React.Fragment key={showName}>
+                                            <TableRow sx={{ bgcolor: 'action.selected' }}>
+                                                <TableCell colSpan={5} onClick={() => handleToggleShow(showName)} sx={{ pl: 4, cursor: 'pointer' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                        {expandedShows[showName] ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                                        <Typography variant="subtitle2" sx={{ ml: 1, fontWeight: 'bold', color: 'secondary.main' }}>
+                                                            {showName}
+                                                        </Typography>
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+                                            <Collapse in={expandedShows[showName]} timeout="auto" unmountOnExit>
+                                                {Object.entries(seasons).sort(([a], [b]) => parseInt(a) - parseInt(b)).map(([seasonNum, episodes]) => (
+                                                    <React.Fragment key={`${showName}-${seasonNum}`}>
+                                                        <TableRow sx={{ bgcolor: 'action.hover', opacity: 0.8 }}>
+                                                            <TableCell colSpan={5} onClick={() => handleToggleSeason(showName, seasonNum)} sx={{ pl: 8, cursor: 'pointer' }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    {expandedSeasons[`${showName}-${seasonNum}`] ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                                                    <Typography variant="body2" sx={{ ml: 1, fontWeight: 'bold', color: 'text.primary' }}>
+                                                                        Season {seasonNum}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                        <Collapse in={expandedSeasons[`${showName}-${seasonNum}`]} timeout="auto" unmountOnExit>
+                                                            {episodes.sort((a, b) => parseInt(a.episode) - parseInt(b.episode)).map((file) => (
+                                                                <TableRow key={file.id} hover onClick={() => handleRowClick(file)} sx={{ cursor: 'pointer' }}>
+                                                                    <TableCell sx={{ pl: 12 }}>{file.title || `Episode ${file.episode}`}</TableCell>
+                                                                    <TableCell>{file.category}</TableCell>
+                                                                    <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{file.file_name}</TableCell>
+                                                                    <TableCell align="right">{formatDuration(file.duration)}</TableCell>
+                                                                    <TableCell align="center">
+                                                                        <IconButton aria-label="delete" color="secondary" onClick={(e) => handleDeleteMedia(file.id, e)} title="Remove from library">
+                                                                            <DeleteForeverIcon />
+                                                                        </IconButton>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            ))}
+                                                        </Collapse>
+                                                    </React.Fragment>
+                                                ))}
+                                            </Collapse>
+                                        </React.Fragment>
+                                    ))}
+                                </Collapse>
+                            </React.Fragment>
+                        );
+                    } else {
+                        // Generic handling for other categories (Ad Bump, Uncategorized, etc.)
+                        return (
+                            <React.Fragment key={categoryName}>
+                                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                    <TableCell colSpan={5} onClick={() => handleToggleCategory(categoryName)} sx={{ cursor: 'pointer' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                            {isCategoryExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                                            <Typography variant="subtitle1" sx={{ ml: 1, fontWeight: 'bold', color: 'primary.main' }}>
+                                                {categoryName}
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
+                                <Collapse in={isCategoryExpanded} timeout="auto" unmountOnExit>
+                                    {categoryFiles.map((file) => (
+                                        <TableRow key={file.id} hover onClick={() => handleRowClick(file)} sx={{ cursor: 'pointer' }}>
+                                            <TableCell sx={{ pl: 4 }}>{file.title || file.file_name}</TableCell>
+                                            <TableCell>{file.category}</TableCell>
+                                            <TableCell sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>{file.file_name}</TableCell>
+                                            <TableCell align="right">{formatDuration(file.duration)}</TableCell>
+                                            <TableCell align="center">
+                                                <IconButton aria-label="delete" color="secondary" onClick={(e) => handleDeleteMedia(file.id, e)} title="Remove from library">
+                                                    <DeleteForeverIcon />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </Collapse>
+                            </React.Fragment>
+                        );
+                    }
+                })
             )}
           </TableBody>
         </Table>

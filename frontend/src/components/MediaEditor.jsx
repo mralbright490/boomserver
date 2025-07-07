@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material'; // Added MenuItem, Select, InputLabel, FormControl
+import { Modal, Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
 
 const style = {
   position: 'absolute',
@@ -7,6 +7,8 @@ const style = {
   left: '50%',
   transform: 'translate(-50%, -50%)',
   width: 600,
+  maxHeight: '90vh', // NEW: Limit maximum height to 90% of viewport height
+  overflowY: 'auto', // NEW: Enable vertical scrolling when content overflows
   bgcolor: 'background.paper',
   border: '2px solid #000',
   boxShadow: 24,
@@ -16,7 +18,6 @@ const style = {
 function MediaEditor({ mediaFile, open, onClose, onSave }) {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  // New state variables for categorization
   const [category, setCategory] = useState('Uncategorized');
   const [showName, setShowName] = useState('');
   const [season, setSeason] = useState('');
@@ -26,7 +27,6 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
     if (mediaFile) {
       setTitle(mediaFile.title || mediaFile.file_name);
       setSummary(mediaFile.summary || '');
-      // Set new categorization fields
       setCategory(mediaFile.category || 'Uncategorized');
       setShowName(mediaFile.showName || '');
       setSeason(mediaFile.season || '');
@@ -35,7 +35,6 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
   }, [mediaFile]);
 
   const handleSave = () => {
-    // Pass new categorization data to onSave
     onSave(mediaFile.id, { title, summary, category, showName, season, episode });
   };
 
@@ -64,7 +63,6 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
           onChange={(e) => setSummary(e.target.value)}
         />
 
-        {/* Category Selection */}
         <FormControl fullWidth margin="normal">
           <InputLabel>Category</InputLabel>
           <Select
@@ -78,7 +76,6 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
           </Select>
         </FormControl>
 
-        {/* Conditional fields for TV Shows */}
         {category === 'TV Show' && (
           <>
             <TextField
@@ -94,7 +91,7 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
               label="Season"
               value={season}
               onChange={(e) => setSeason(e.target.value)}
-              type="number" // Assuming season is a number
+              type="number"
             />
             <TextField
               margin="normal"
@@ -102,7 +99,7 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
               label="Episode"
               value={episode}
               onChange={(e) => setEpisode(e.target.value)}
-              type="number" // Assuming episode is a number
+              type="number"
             />
           </>
         )}

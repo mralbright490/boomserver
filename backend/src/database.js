@@ -33,6 +33,8 @@ const deleteLibraryPath = (id) => {
 };
 
 const getMediaByPath = (filePath) => db.get('media_files').find({ path: filePath }).value();
+// NEW: Function to get media by filename
+const getMediaByFilename = (filename) => db.get('media_files').find({ fileName: filename }).value();
 
 const addMediaFile = (file) => {
     const newFile = { 
@@ -84,7 +86,7 @@ module.exports = { 
     addLibraryPath, 
     deleteLibraryPath, 
     getMediaByPath, 
-    addMediaFile, 
+    getMediaByFilename, // NEW: Export getMediaByFilename
     addMediaFile, 
     getMediaFiles, 
     updateMediaFile,
