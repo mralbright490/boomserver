@@ -1,24 +1,15 @@
 @echo off
-ECHO Starting BoomServer...
-ECHO This window must remain open for the server to run.
-ECHO.
+REM Change directory to the script's location to ensure paths are correct
+cd /d "%~dp0"
 
-:: Get the directory where this script is located (e.g., C:\Program Files\BoomServer)
-set "SCRIPT_DIR=%~dp0"
+echo Starting BoomServer in the background...
+REM Start the Node.js server silently in the background
+start "BoomServer" /B "%~dp0\bin\Nodejs\node.exe" "%~dp0\backend\src\server.js"
 
-:: THE FIX: Define the full, absolute path to our bundled node.exe
-:: It's now located in {app}\bin\Nodejs\node.exe
-set "NODE_EXE=%SCRIPT_DIR%bin\Nodejs\node.exe"
+echo Waiting for server to initialize...
+REM Wait for 2 seconds to give the server time to start
+ping 127.0.0.1 -n 3 > nul
 
-:: Change the working directory to our backend folder so the server can find its files
-cd /d "%SCRIPT_DIR%backend"
-
-ECHO [INFO] Launching server from: %cd%
-ECHO.
-
-:: Execute the server using the full path to our bundled Node.js
-"%NODE_EXE%" src/server.js
-
-ECHO.
-ECHO --=[ BoomServer has stopped. ]=--
-PAUSE
+echo Opening BoomServer in your browser.
+REM Open the frontend in the default browser
+start http://localhost:8000
