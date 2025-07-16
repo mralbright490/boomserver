@@ -39,7 +39,7 @@ function AdManager({ refreshTrigger, onUpdate }) {
             body: JSON.stringify(data)
         }).then(() => {
             handleCloseEditor();
-            onUpdate();
+            onUpdate(); // Trigger a global refresh
         });
     };
 
@@ -52,6 +52,7 @@ function AdManager({ refreshTrigger, onUpdate }) {
             <Paper>
                 <List>
                     {channels.map(channel => {
+                        // THE FIX: Provide a default adSettings object if one doesn't exist on the channel
                         const adSettings = channel.adSettings || { active: false };
                         const ruleText = adSettings.active
                             ? `Insert ${adSettings.adCount || 1} ad(s) after every ${adSettings.programsPerAd || 3} program(s).`

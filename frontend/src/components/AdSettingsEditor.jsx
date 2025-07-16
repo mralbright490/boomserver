@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Box, Typography, Button, FormGroup, FormControlLabel, Switch, TextField, RadioGroup, Radio, FormControl } from '@mui/material';
 
-const style = { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, bgcolor: 'background.paper', border: '2px solid #000', boxShadow: 24, p: 4, };
+const style = { /* ... modal style ... */ };
 
 function AdSettingsEditor({ channel, open, onClose, onSave }) {
   const [adSettings, setAdSettings] = useState({ active: false, rule: 'programCount', programsPerAd: 3, adCount: 1, intervalMinutes: 30 });
