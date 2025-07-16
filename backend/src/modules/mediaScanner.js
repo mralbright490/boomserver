@@ -1,18 +1,9 @@
-/**
- * @file mediaScanner.js
- * @description Core module for recursively scanning media files.
- * @author Macro for AP DreamStudios
- */
-
 const fs = require('fs/promises');
 const path = require('path');
 const { execFile } = require('child_process');
 const db = require('../database');
-
-// DYNAMICALLY find the path to our bundled ffprobe.exe
-// This navigates from this script's location up to the root install folder and into the /bin folder.
 const FFPROBE_PATH = path.join(__dirname, '..', '..', '..', 'bin', 'ffprobe.exe');
-const SUPPORTED_EXTENSIONS = ['.mp4', '.mkv', '..avi', '.mov', '.webm'];
+const SUPPORTED_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.webm'];
 
 async function runLibraryScan() {
     console.log('[SCANNER] Starting library scan...');
@@ -21,8 +12,6 @@ async function runLibraryScan() {
         console.log('[SCANNER] No library paths configured. Scan skipped.');
         return;
     }
-
-    // Check if ffprobe.exe exists at the dynamic path before starting
     try {
         await fs.access(FFPROBE_PATH);
     } catch {
@@ -30,20 +19,18 @@ async function runLibraryScan() {
         console.error('[SCANNER] Cannot process media files. Halting scan.');
         return;
     }
-
     for (const library of libraryPaths) {
         await scanDirectory(library.path);
     }
     console.log('[SCANNER] Library scan finished.');
 }
-
 async function scanDirectory(directoryPath) {
     try {
         const entries = await fs.readdir(directoryPath, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(directoryPath, entry.name);
             if (entry.isDirectory()) {
-                await scanDirectory(fullPath); // Recurse into subdirectories
+                await scanDirectory(fullPath);
             } else if (SUPPORTED_EXTENSIONS.includes(path.extname(entry.name).toLowerCase())) {
                 const existingFile = await db.getMediaByPath(fullPath);
                 if (!existingFile) {
@@ -59,7 +46,6 @@ async function scanDirectory(directoryPath) {
         console.error(`[SCANNER] Error scanning directory ${directoryPath}. Please ensure the path is correct and accessible. Details:`, error.message);
     }
 }
-
 function getMediaDuration(filePath) {
     return new Promise((resolve) => {
         const args = ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath];
@@ -73,5 +59,4 @@ function getMediaDuration(filePath) {
         });
     });
 }
-
 module.exports = { runLibraryScan };
