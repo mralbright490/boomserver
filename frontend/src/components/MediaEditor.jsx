@@ -7,8 +7,6 @@ const style = {
   left: '50%',
   transform: 'translate(-50%, -50%)',
   width: 600,
-  maxHeight: '90vh', // NEW: Limit maximum height to 90% of viewport height
-  overflowY: 'auto', // NEW: Enable vertical scrolling when content overflows
   bgcolor: 'background.paper',
   border: '2px solid #000',
   boxShadow: 24,
@@ -44,8 +42,8 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
     <Modal open={open} onClose={onClose}>
       <Box sx={style}>
         <Typography variant="h6" component="h2">Edit Media</Typography>
-        <Typography sx={{ mt: 2 }} color="text.secondary">{mediaFile.file_name}</Typography>
-        
+        <Typography sx={{ mt: 2 }} color="text.secondary">{mediaFile.fileName || mediaFile.title}</Typography>
+
         <TextField
           margin="normal"
           fullWidth
@@ -70,6 +68,10 @@ function MediaEditor({ mediaFile, open, onClose, onSave }) {
             label="Category"
             onChange={(e) => setCategory(e.target.value)}
           >
+            {/* Add a disabled YouTube option for display purposes */}
+            {mediaFile.category === 'YouTube' && (
+                <MenuItem value="YouTube" disabled>YouTube</MenuItem>
+            )}
             <MenuItem value="Uncategorized">Uncategorized</MenuItem>
             <MenuItem value="TV Show">TV Show</MenuItem>
             <MenuItem value="Ad Bump">Ad Bump</MenuItem>
