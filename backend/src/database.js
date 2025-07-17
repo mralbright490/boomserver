@@ -26,43 +26,15 @@ const addMediaFile = (file) => { const newFile = { id: Date.now(), ...file, titl
 const getMediaFiles = () => db.get('media_files').sortBy('file_name').value();
 const updateMediaFile = (id, data) => { db.get('media_files').find({ id: parseInt(id) }).assign({ title: data.title, summary: data.summary, category: data.category, showName: data.showName, season: data.season, episode: data.episode }).write(); return { updated: 1 }; };
 const deleteMediaFile = (id) => { db.get('media_files').remove({ id: parseInt(id) }).write(); return { message: 'Media file removed from library.' }; };
+const purgeMediaStore = async () => { db.set('media_files', []).write(); console.log('[DATABASE] Media store has been purged.'); return { message: 'Media library purged successfully.' }; };
+const getAdOptions = () => db.get('media_files').filter({ category: 'Ad Bump' }).value();
 const getChannels = () => db.get('channels').value();
-const addChannel = (channelData) => { const newChannel = { id: Date.now(), name: channelData.name, number: parseInt(channelData.number), thumbnail: channelData.thumbnail, schedule: [] }; db.get('channels').push(newChannel).write(); return newChannel; };
+const addChannel = (channelData) => { const newChannel = { id: Date.now(), name: channelData.name, number: parseInt(channelData.number), thumbnail: channelData.thumbnail, schedule: [], adSettings: { active: false, rule: 'programCount', programsPerAd: 3, adCount: 1, intervalMinutes: 30 } }; db.get('channels').push(newChannel).write(); return newChannel; };
 const deleteChannel = (id) => { db.get('channels').remove({ id: parseInt(id) }).write(); return { deleted: 1 }; };
-const updateChannel = (id, data) => { db.get('channels').find({ id: parseInt(id) }).assign({ name: data.name, number: parseInt(data.number), thumbnail: data.thumbnail }).write(); return { updated: 1 }; };
+const updateChannel = (id, data) => { db.get('channels').find({ id: parseInt(id) }).assign({ name: data.name, number: parseInt(data.number), thumbnail: data.thumbnail, adSettings: data.adSettings }).write(); return { updated: 1 }; };
 const updateScheduleForChannel = (channelId, schedule) => { db.get('channels').find({ id: parseInt(channelId) }).assign({ schedule }).write(); return { success: true }; };
 const addMediaToChannelSchedule = (channelId, mediaId) => { const channelChain = db.get('channels').find({ id: parseInt(channelId) }); const mediaItem = db.get('media_files').find({ id: parseInt(mediaId) }).value(); if (channelChain.value() && mediaItem) { channelChain.get('schedule').push(mediaItem).write(); return { success: true, item: mediaItem }; } return { success: false, message: 'Channel or Media item not found' }; };
+const addMultipleMediaToChannelSchedule = (channelId, mediaIds) => { const channelChain = db.get('channels').find({ id: parseInt(channelId) }); if (!channelChain.value()) { return { success: false, message: 'Channel not found' }; } const mediaItems = db.get('media_files').filter(file => mediaIds.includes(file.id)).value(); if (mediaItems.length > 0) { const currentSchedule = channelChain.get('schedule').value(); const newSchedule = currentSchedule.concat(mediaItems); channelChain.assign({ schedule: newSchedule }).write(); return { success: true, count: mediaItems.length }; } return { success: false, message: 'No valid media items found' }; };
+const bulkUpdateCategory = (mediaIds, category) => { db.get('media_files').filter(file => mediaIds.includes(file.id)).forEach(file => { db.get('media_files').find({ id: file.id }).assign({ category: category }).write(); }).value(); return { success: true, updated: mediaIds.length }; };
 
-// NEW: Function to add multiple media items to a schedule
-const addMultipleMediaToChannelSchedule = (channelId, mediaIds) => {
-    const channelChain = db.get('channels').find({ id: parseInt(channelId) });
-    if (!channelChain.value()) {
-        return { success: false, message: 'Channel not found' };
-    }
-    const mediaItems = db.get('media_files').filter(file => mediaIds.includes(file.id)).value();
-    if (mediaItems.length > 0) {
-        const currentSchedule = channelChain.get('schedule').value();
-        const newSchedule = currentSchedule.concat(mediaItems);
-        channelChain.assign({ schedule: newSchedule }).write();
-        return { success: true, count: mediaItems.length };
-    }
-    return { success: false, message: 'No valid media items found' };
-};
-
-// NEW: Function to update the category for multiple files
-const bulkUpdateCategory = (mediaIds, category) => {
-    db.get('media_files')
-      .filter(file => mediaIds.includes(file.id))
-      .forEach(file => {
-          db.get('media_files').find({ id: file.id }).assign({ category: category }).write();
-      })
-      .value();
-    return { success: true, updated: mediaIds.length };
-};
-
-
-module.exports = {
-    initialize, getLibraryPaths, addLibraryPath, deleteLibraryPath, getMediaByPath, addMediaFile, getMediaFiles, updateMediaFile, deleteMediaFile, getChannels, addChannel, deleteChannel, updateChannel, updateScheduleForChannel, addMediaToChannelSchedule,
-    addMultipleMediaToChannelSchedule, // Export new function
-    bulkUpdateCategory // Export new function
-};
+module.exports = { initialize, getLibraryPaths, addLibraryPath, deleteLibraryPath, getMediaByPath, addMediaFile, getMediaFiles, updateMediaFile, deleteMediaFile, purgeMediaStore, getAdOptions, getChannels, addChannel, deleteChannel, updateChannel, updateScheduleForChannel, addMediaToChannelSchedule, addMultipleMediaToChannelSchedule, bulkUpdateCategory };
