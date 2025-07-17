@@ -15,22 +15,51 @@ function LibrarySettings({ onLibraryUpdate }) {
     const [isScanning, setIsScanning] = useState(false);
     const [isPurging, setIsPurging] = useState(false);
     const [isShuttingDown, setIsShuttingDown] = useState(false);
+    const [settings, setSettings] = useState({ publicUrlBase: '' });
 
     useEffect(() => {
-        fetch(`${API_URL}/api/library/paths`).then(res => res.json()).then(data => { setPaths(data); setIsLoading(false); }).catch(error => console.error("Failed to fetch library paths:", error));
+        Promise.all([
+            fetch(`${API_URL}/api/library/paths`).then(res => res.json()),
+            fetch(`${API_URL}/api/settings`).then(res => res.json())
+        ]).then(([pathsData, settingsData]) => {
+            setPaths(pathsData || []);
+            setSettings(settingsData || { publicUrlBase: '' });
+        }).catch(error => console.error("Failed to fetch initial settings:", error))
+        .finally(() => setIsLoading(false));
     }, []);
 
+    const handleSettingsChange = (event) => {
+        setSettings({ ...settings, [event.target.name]: event.target.value });
+    };
+
+    const handleSaveSettings = () => {
+        fetch(`${API_URL}/api/settings`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        })
+        .then(res => res.json())
+        .then(() => alert('Settings saved successfully!'));
+    };
+    
     const handleAddPath = () => { if (newPath) { fetch(`${API_URL}/api/library/paths`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: newPath }) }).then(res => res.json()).then(addedPath => { setPaths([...paths, addedPath]); setNewPath(''); }); } };
     const handleDeletePath = (idToDelete) => { fetch(`${API_URL}/api/library/paths/${idToDelete}`, { method: 'DELETE', }).then(() => { setPaths(paths.filter(p => p.id !== idToDelete)); }); };
     const handleAddYouTubeUrl = () => { if (youtubeUrl) { fetch(`${API_URL}/api/youtube`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: youtubeUrl }), }).then(res => { if (!res.ok) { return res.json().then(err => Promise.reject(err)); } return res.json(); }).then(data => { setYoutubeUrl(''); alert(`Successfully added ${data.count} item(s) from the YouTube ${data.type}.`); if (onLibraryUpdate) { onLibraryUpdate(); } }).catch(err => { console.error("Failed to add YouTube URL:", err); alert(`Error: ${err.message || 'An unknown error occurred.'}`); }); } };
     const handleScanLibrary = () => { setIsScanning(true); fetch(`${API_URL}/api/library/scan`, { method: 'POST' }).then(res => res.json()).then(data => { alert(data.message); setIsScanning(false); if (onLibraryUpdate) { onLibraryUpdate(); } }).catch(error => { alert('Error: Could not start library scan.'); setIsScanning(false); }); };
-    const handlePurgeLibrary = () => { if (window.confirm('DANGER: Are you sure you want to purge the entire media library?\n\nThis will remove all media records from the database but will NOT delete your actual files. This action cannot be undone.')) { setIsPurging(true); fetch(`${API_URL}/api/library/purge`, { method: 'DELETE' }).then(res => res.json()).then(data => { alert(data.message); setIsPurging(false); if (onLibraryUpdate) { onLibraryUpdate(); } }).catch(error => { alert('Error: Could not purge the library.'); setIsPurging(false); }); } };
-    const handleShutdownServer = () => { if (window.confirm('WARNING: Are you sure you want to shut down BoomServer?\n\nThis will stop the backend server and redirect your browser.')) { setIsShuttingDown(true); fetch(`${API_URL}/api/shutdown`, { method: 'POST' }).then(res => res.json()).then(data => { alert(data.message); window.location.href = 'https://wapaccess.org'; }).catch(error => { alert('Error: Could not shut down the server. It might already be stopped.'); setIsShuttingDown(false); }); } };
+    const handlePurgeLibrary = () => { if (window.confirm('DANGER: Are you sure you want to purge the entire media library?')) { setIsPurging(true); fetch(`${API_URL}/api/library/purge`, { method: 'DELETE' }).then(res => res.json()).then(data => { alert(data.message); setIsPurging(false); if (onLibraryUpdate) { onLibraryUpdate(); } }).catch(error => { alert('Error: Could not purge the library.'); setIsPurging(false); }); } };
+    const handleShutdownServer = () => { if (window.confirm('WARNING: Are you sure you want to shut down BoomServer?')) { setIsShuttingDown(true); fetch(`${API_URL}/api/shutdown`, { method: 'POST' }).then(res => res.json()).then(data => { alert(data.message); window.location.href = 'https://wapaccess.org'; }).catch(error => { alert('Error: Could not shut down the server.'); setIsShuttingDown(false); }); } };
 
     if (isLoading) return <CircularProgress />;
 
     return (
       <Box>
+        <Typography variant="h5" gutterBottom>Network Settings</Typography>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Set your public address here to make M3U files work outside your local network. This requires port forwarding on your router.
+        </Typography>
+        <TextField name="publicUrlBase" label="Public URL Base" value={settings.publicUrlBase} onChange={handleSettingsChange} fullWidth margin="normal" placeholder="e.g., http://your-public-ip:8000" />
+        <Button variant="contained" onClick={handleSaveSettings} sx={{mb: 2}}>Save Network Settings</Button>
+        <Divider sx={{ my: 2 }} />
         <Typography variant="h5" gutterBottom>Library Paths</Typography>
         <Typography variant="body2" color="text.secondary" gutterBottom>Add the folder paths where your media is stored.</Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', my: 2 }}>
@@ -58,4 +87,5 @@ function LibrarySettings({ onLibraryUpdate }) {
       </Box>
     );
 }
+
 export default LibrarySettings;
