@@ -29,7 +29,18 @@ const deleteMediaFile = (id) => { db.get('media_files').remove({ id: parseInt(id
 const purgeMediaStore = async () => { db.set('media_files', []).write(); console.log('[DATABASE] Media store has been purged.'); return { message: 'Media library purged successfully.' }; };
 const getAdOptions = () => db.get('media_files').filter({ category: 'Ad Bump' }).value();
 const getChannels = () => db.get('channels').value();
-const addChannel = (channelData) => { const newChannel = { id: Date.now(), name: channelData.name, number: parseInt(channelData.number), thumbnail: channelData.thumbnail, schedule: [], adSettings: { active: false, rule: 'programCount', programsPerAd: 3, adCount: 1, intervalMinutes: 30 } }; db.get('channels').push(newChannel).write(); return newChannel; };
+const addChannel = (channelData) => {
+    const newChannel = {
+        id: Date.now(),
+        name: channelData.name,
+        number: parseInt(channelData.number),
+        thumbnail: channelData.thumbnail,
+        schedule: [],
+        adSettings: { active: false, rule: 'programCount', programsPerAd: 3, adCount: 1, intervalMinutes: 30 }
+    };
+    db.get('channels').push(newChannel).write();
+    return newChannel;
+};
 const deleteChannel = (id) => { db.get('channels').remove({ id: parseInt(id) }).write(); return { deleted: 1 }; };
 const updateChannel = (id, data) => { db.get('channels').find({ id: parseInt(id) }).assign({ name: data.name, number: parseInt(data.number), thumbnail: data.thumbnail, adSettings: data.adSettings }).write(); return { updated: 1 }; };
 const updateScheduleForChannel = (channelId, schedule) => { db.get('channels').find({ id: parseInt(channelId) }).assign({ schedule }).write(); return { success: true }; };

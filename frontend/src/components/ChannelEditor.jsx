@@ -19,7 +19,6 @@ function ChannelEditor({ channel, open, onClose, onSave }) {
   }, [channel]);
 
   const handleSave = () => {
-    // Pass the m3uFileName back on save
     const updatedChannelData = { ...channel, name, number, thumbnail, m3uFileName };
     onSave(channel.id, updatedChannelData);
   };

@@ -4,6 +4,7 @@ import LibrarySettings from './components/LibrarySettings';
 import LibraryViewer from './components/LibraryViewer';
 import BomCastScheduler from './components/BomCastScheduler';
 import ChannelManager from './components/ChannelManager';
+import AdManager from './components/AdManager';
 
 const API_URL = 'http://localhost:8000';
 
@@ -18,17 +19,28 @@ function App() {
   const [channels, setChannels] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleTabChange = (event, newValue) => { setCurrentTab(newValue); };
-  const handleUpdate = useCallback(() => { setRefreshTrigger(prev => prev + 1); }, []);
+  const handleTabChange = (event, newValue) => {
+    setCurrentTab(newValue);
+  };
+
+  const handleUpdate = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
     fetch(`${API_URL}/api/channels`)
         .then(res => res.json())
-        .then(data => setChannels(Array.isArray(data) ? data : []))
-        .catch(err => { console.error("Failed to fetch channels:", err); setChannels([]); })
+        .then(data => {
+            setChannels(Array.isArray(data) ? data : []);
+        })
+        .catch(err => {
+            console.error("Failed to fetch channels:", err);
+            setChannels([]);
+        })
         .finally(() => setIsLoading(false));
   }, [refreshTrigger]);
+
 
   return (
     <ThemeProvider theme={vaporwaveTheme}>
@@ -44,15 +56,20 @@ function App() {
               <Tab label="Channels" />
               <Tab label="Scheduler" />
               <Tab label="Library" />
+              <Tab label="Ad Settings" />
               <Tab label="Settings" />
             </Tabs>
           </Box>
-          {isLoading ? ( <Box sx={{display: 'flex', justifyContent: 'center', p: 4}}><CircularProgress/></Box> ) : (
+          
+          {isLoading ? (
+            <Box sx={{display: 'flex', justifyContent: 'center', p: 4}}><CircularProgress/></Box>
+          ) : (
             <>
               <Box sx={{ pt: 2 }} hidden={currentTab !== 0}><ChannelManager channels={channels} onUpdate={handleUpdate} /></Box>
               <Box sx={{ pt: 2 }} hidden={currentTab !== 1}><BomCastScheduler allChannels={channels} onUpdate={handleUpdate} /></Box>
               <Box sx={{ pt: 2 }} hidden={currentTab !== 2}><LibraryViewer allChannels={channels} onUpdate={handleUpdate} /></Box>
-              <Box sx={{ pt: 2 }} hidden={currentTab !== 3}><LibrarySettings onLibraryUpdate={handleUpdate} /></Box>
+              <Box sx={{ pt: 2 }} hidden={currentTab !== 3}><AdManager channels={channels} onUpdate={handleUpdate} /></Box>
+              <Box sx={{ pt: 2 }} hidden={currentTab !== 4}><LibrarySettings onLibraryUpdate={handleUpdate} /></Box>
             </>
           )}
         </Box>
@@ -60,4 +77,5 @@ function App() {
     </ThemeProvider>
   );
 }
+
 export default App;

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Button, Avatar, IconButton, Tooltip, TextField } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, Typography, Paper, List, ListItem, ListItemText, Button, Avatar, IconButton, Tooltip, TextField } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Link as LinkIcon } from '@mui/icons-material';
 import ChannelEditor from './ChannelEditor';
 
@@ -25,21 +25,13 @@ function ChannelManager({ channels, onUpdate }) {
             <Paper sx={{ p: 2, mb: 4 }}>
                 <Typography variant="h6">Existing Channels</Typography>
                 <List>
-                    {channels.map(channel => (
+                    {(channels || []).map(channel => (
                         <ListItem key={channel.id}
                             secondaryAction={
                                 <>
-                                    <Tooltip title="Generate & Open M3U File">
-                                        <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => handleGenerateM3U(channel)}>
-                                            {channel.m3uFileName || 'playlist.m3u'}
-                                        </Button>
-                                    </Tooltip>
-                                    <IconButton edge="end" aria-label="edit" sx={{ ml: 1 }} onClick={() => handleOpenEditor(channel)}>
-                                        <EditIcon />
-                                    </IconButton>
-                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}>
-                                        <DeleteIcon />
-                                    </IconButton>
+                                    <Tooltip title="Generate & Open M3U File"><Button variant="outlined" startIcon={<LinkIcon />} onClick={() => handleGenerateM3U(channel)}>{channel.m3uFileName || 'playlist.m3u'}</Button></Tooltip>
+                                    <IconButton edge="end" aria-label="edit" sx={{ ml: 1 }} onClick={() => handleOpenEditor(channel)}><EditIcon /></IconButton>
+                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}><DeleteIcon /></IconButton>
                                 </>
                             }>
                             <Avatar src={channel.thumbnail} sx={{ mr: 2 }} variant="rounded">{!channel.thumbnail && channel.name.charAt(0)}</Avatar>
