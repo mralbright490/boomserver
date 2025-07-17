@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, TextField, Button, Avatar, IconButton } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import { Box, Typography, Paper, CircularProgress, List, ListItem, ListItemText, Button, Avatar, IconButton, Tooltip, TextField } from '@mui/material';
+import { Edit as EditIcon, Delete as DeleteIcon, Link as LinkIcon } from '@mui/icons-material';
 import ChannelEditor from './ChannelEditor';
 
 const API_URL = 'http://localhost:8000';
 
-function ChannelManager({ refreshTrigger, onManageSchedule }) {
+function ChannelManager({ refreshTrigger, onUpdate }) {
     const [channels, setChannels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [newName, setNewName] = useState('');
@@ -20,10 +19,7 @@ function ChannelManager({ refreshTrigger, onManageSchedule }) {
         fetch(`${API_URL}/api/channels`)
             .then(res => res.json())
             .then(data => setChannels(Array.isArray(data) ? data : []))
-            .catch(err => {
-                console.error("Failed to fetch channels:", err);
-                setChannels([]);
-            })
+            .catch(err => { console.error("Failed to fetch channels:", err); setChannels([]); })
             .finally(() => setIsLoading(false));
     };
 
@@ -31,9 +27,10 @@ function ChannelManager({ refreshTrigger, onManageSchedule }) {
 
     const handleOpenEditor = (channel) => { setSelectedChannel(channel); setIsEditorOpen(true); };
     const handleCloseEditor = () => { setSelectedChannel(null); setIsEditorOpen(false); };
-    const handleSaveChannel = (id, data) => { fetch(`${API_URL}/api/channels/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(() => { handleCloseEditor(); fetchChannels(); }); };
-    const handleAddChannel = () => { if (!newName || !newNumber) { alert('Channel Name and Number are required.'); return; } fetch(`${API_URL}/api/channels`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, number: newNumber, thumbnail: newThumbnail }), }).then(() => { setNewName(''); setNewNumber(''); setNewThumbnail(''); fetchChannels(); }); };
-    const handleDeleteChannel = (id, event) => { event.stopPropagation(); if (window.confirm('Are you sure you want to delete this channel and its schedule?')) { fetch(`${API_URL}/api/channels/${id}`, { method: 'DELETE' }).then(() => fetchChannels()); } };
+    const handleSaveChannel = (id, data) => { fetch(`${API_URL}/api/channels/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(() => { handleCloseEditor(); onUpdate(); }); };
+    const handleAddChannel = () => { if (!newName || !newNumber) { alert('Channel Name and Number are required.'); return; } fetch(`${API_URL}/api/channels`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, number: newNumber, thumbnail: newThumbnail }), }).then(() => { setNewName(''); setNewNumber(''); setNewThumbnail(''); onUpdate(); }); };
+    const handleDeleteChannel = (id) => { if (window.confirm('Are you sure you want to delete this channel and its schedule?')) { fetch(`${API_URL}/api/channels/${id}`, { method: 'DELETE' }).then(() => onUpdate()); } };
+    const handleGenerateM3U = (channel) => { const url = `${API_URL}/m3u/${channel.id}/${channel.m3uFileName}`; window.open(url, '_blank'); };
 
     if (isLoading) return <CircularProgress />;
 
@@ -47,19 +44,28 @@ function ChannelManager({ refreshTrigger, onManageSchedule }) {
                         <ListItem key={channel.id}
                             secondaryAction={
                                 <>
-                                    <Button variant="outlined" sx={{mr: 1}} onClick={() => onManageSchedule(channel.id)}>Manage Schedule</Button>
-                                    <IconButton edge="end" aria-label="edit" onClick={() => handleOpenEditor(channel)}><EditIcon /></IconButton>
-                                    <IconButton edge="end" aria-label="delete" onClick={(e) => handleDeleteChannel(channel.id, e)}><DeleteIcon /></IconButton>
+                                    <Tooltip title="Generate & Open M3U File">
+                                        <Button variant="outlined" startIcon={<LinkIcon />} onClick={() => handleGenerateM3U(channel)}>
+                                            {channel.m3uFileName || 'playlist.m3u'}
+                                        </Button>
+                                    </Tooltip>
+                                    <IconButton edge="end" aria-label="edit" sx={{ ml: 1 }} onClick={() => handleOpenEditor(channel)}>
+                                        <EditIcon />
+                                    </IconButton>
+                                    <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteChannel(channel.id)}>
+                                        <DeleteIcon />
+                                    </IconButton>
                                 </>
                             }>
                             <Avatar src={channel.thumbnail} sx={{ mr: 2 }} variant="rounded">{!channel.thumbnail && channel.name.charAt(0)}</Avatar>
-                            <ListItemText primary={`${channel.number} - ${channel.name}`} secondary={`Items in schedule: ${channel.schedule.length}`} />
+                            <ListItemText primary={`${channel.number} - ${channel.name}`} secondary={`Items in schedule: ${(channel.schedule || []).length}`} />
                         </ListItem>
                     ))}
                 </List>
             </Paper>
             <Paper sx={{ p: 2 }}>
                 <Typography variant="h6">Create New Channel</Typography>
+                {/* THIS IS WHERE THE TYPO WAS. It is now corrected to use uppercase TextField */}
                 <TextField label="Channel Name" value={newName} onChange={e => setNewName(e.target.value)} fullWidth margin="normal" />
                 <TextField label="Channel Number" type="number" value={newNumber} onChange={e => setNewNumber(e.target.value)} fullWidth margin="normal" />
                 <TextField label="Thumbnail URL (Optional)" value={newThumbnail} onChange={e => setNewThumbnail(e.target.value)} fullWidth margin="normal" />

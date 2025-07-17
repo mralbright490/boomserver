@@ -4,9 +4,38 @@ import LibrarySettings from './components/LibrarySettings';
 import LibraryViewer from './components/LibraryViewer';
 import BomCastScheduler from './components/BomCastScheduler';
 import ChannelManager from './components/ChannelManager';
-import AdManager from './components/AdManager'; // Import the new Ad Manager
+import AdManager from './components/AdManager';
 
-const vaporwaveTheme = createTheme({ /* ... theme object ... */ });
+const vaporwaveTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#00e5ff', // Neon Cyan
+    },
+    secondary: {
+      main: '#f50057', // Neon Pink/Magenta
+    },
+    background: {
+      default: '#1a1a3d', // Dark Purple/Blue
+      paper: '#2a2a4d',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#b3b3e6',
+    },
+  },
+  typography: {
+    fontFamily: 'Roboto, sans-serif',
+    h4: {
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#ff79c6',
+    },
+    h5: {
+      fontFamily: '"Press Start 2P", monospace',
+      color: '#bd93f9',
+    },
+  },
+});
 
 function App() {
   const [currentTab, setCurrentTab] = useState(0);
@@ -14,7 +43,6 @@ function App() {
 
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
-    handleLibraryUpdate();
   };
 
   const handleLibraryUpdate = useCallback(() => {
@@ -26,7 +54,8 @@ function App() {
       <CssBaseline />
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-            {/* ... header ... */}
+            <Typography variant="h4" component="h1">//-- BoomServer --//</Typography>
+            <Typography color="text.secondary">Media Asset Management for Project: <span style={{color: '#ff79c6'}}>Bomcast</span></Typography>
         </Box>
         <Box sx={{ width: '100%', border: '1px solid #333', borderRadius: 2, p: 0.5, bgcolor: 'background.paper' }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -38,7 +67,6 @@ function App() {
               <Tab label="Settings" />
             </Tabs>
           </Box>
-
           <Box sx={{ pt: 2 }} hidden={currentTab !== 0}><ChannelManager refreshTrigger={refreshTrigger} onUpdate={handleLibraryUpdate} /></Box>
           <Box sx={{ pt: 2 }} hidden={currentTab !== 1}><BomCastScheduler refreshTrigger={refreshTrigger} onUpdate={handleLibraryUpdate} /></Box>
           <Box sx={{ pt: 2 }} hidden={currentTab !== 2}><LibraryViewer refreshTrigger={refreshTrigger} onUpdate={handleLibraryUpdate} /></Box>
