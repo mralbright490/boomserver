@@ -1,10 +1,18 @@
 const YouTube = require('youtube-sr').default;
 const db = require('../database');
 
+// These Regular Expressions will reliably determine the URL type.
+const PLAYLIST_REGEX = /[?&]list=([^#\&\?]+)/;
+const VIDEO_REGEX = /(?:.be\/|v=)([\w-]{11})/;
+
 async function processYouTubeUrl(url) {
     try {
-        // First, manually check if the URL is a playlist as a fallback.
-        if (url.includes('playlist?list=')) {
+        const isPlaylist = PLAYLIST_REGEX.test(url);
+        const isVideo = VIDEO_REGEX.test(url);
+
+        // THE FIX: We now check for a playlist FIRST. This is the most specific case.
+        // A URL can be both a video and part of a playlist, but we want to treat it as a playlist import.
+        if (isPlaylist) {
             console.log('[Importer] Playlist URL pattern detected. Processing as playlist...');
             const playlist = await YouTube.getPlaylist(url, { fetchAll: true });
             
@@ -33,8 +41,8 @@ async function processYouTubeUrl(url) {
             });
             return { success: true, type: 'playlist', count: playlist.videoCount };
         } 
-        // If it's not a playlist, check if it's a single video.
-        else if (YouTube.validate(url) === 'video') {
+        // If it's not a playlist, THEN check if it's a single video.
+        else if (isVideo) {
             console.log('[Importer] Single video detected.');
             const video = await YouTube.getVideo(url);
             db.addMediaFile({

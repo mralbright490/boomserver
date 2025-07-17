@@ -6,27 +6,18 @@ const youtubeImporter = require('./modules/youtubeImporter');
 const open = require('open');
 
 fastify.register(require('@fastify/static'), { root: path.join(__dirname, '..', '..', 'frontend', 'dist'), prefix: '/' });
-
-fastify.setNotFoundHandler((req, reply) => {
-  if (!req.raw.url.startsWith('/api')) {
-    return reply.sendFile('index.html');
-  }
-  reply.code(404).send({ message: 'API route not found' });
-});
-
+fastify.setNotFoundHandler((req, reply) => { if (!req.raw.url.startsWith('/api')) { return reply.sendFile('index.html'); } reply.code(404).send({ message: 'API route not found' }); });
 fastify.register(require('@fastify/cors'), { prefix: '/api', methods: ['GET', 'POST', 'DELETE', 'PUT'] });
 
-// Library Routes
+// Library & Media Routes
 fastify.get('/api/library/paths', async () => db.getLibraryPaths());
 fastify.post('/api/library/paths', async (req) => db.addLibraryPath(req.body.path));
-fastify.delete('/api/library/paths/:id', async (req) => db.deleteLibraryPath(req.params.id));
 fastify.post('/api/library/scan', (req, reply) => { scanner.runLibraryScan(); return { message: 'Library scan initiated.' }; });
-fastify.delete('/api/library/purge', async () => db.purgeMediaStore());
-
-// Media Routes
 fastify.get('/api/media', async () => db.getMediaFiles());
 fastify.put('/api/media/:id', async (req) => db.updateMediaFile(req.params.id, req.body));
-fastify.delete('/api/media/:id', async (req) => db.deleteMediaFile(req.params.id));
+fastify.post('/api/youtube', async (req, reply) => { const { url } = req.body; if (!url) { return reply.code(400).send({ message: 'URL is required' }); } const result = await youtubeImporter.processYouTubeUrl(url); if (result.success) { return reply.send(result); } return reply.code(500).send({ message: result.message }); });
+
+// NEW: Route to bulk update media categories
 fastify.post('/api/media/bulk-update-category', async (req, reply) => {
     const { mediaIds, category } = req.body;
     if (!Array.isArray(mediaIds) || !category) {
@@ -36,27 +27,15 @@ fastify.post('/api/media/bulk-update-category', async (req, reply) => {
     return reply.send(result);
 });
 
-// YouTube Route
-fastify.post('/api/youtube', async (req, reply) => {
-    const { url } = req.body;
-    if (!url) {
-        return reply.code(400).send({ message: 'URL is required' });
-    }
-    const result = await youtubeImporter.processYouTubeUrl(url);
-    if (result.success) {
-        return reply.send(result);
-    }
-    return reply.code(500).send({ message: result.message });
-});
-
 // Channel & Schedule Routes
 fastify.get('/api/channels', async () => db.getChannels());
 fastify.post('/api/channels', async (req) => db.addChannel(req.body));
-fastify.delete('/api/channels/:id', async (req) => db.deleteChannel(req.params.id));
 fastify.put('/api/channels/:id', async (req) => db.updateChannel(req.params.id, req.body));
-fastify.get('/api/bomcast/ad-options', async () => db.getAdOptions());
-fastify.post('/api/channels/:id/schedule', async (req, reply) => { const channelId = req.params.id; const { schedule } = req.body; if (!Array.isArray(schedule)) { return reply.code(400).send({ message: 'Schedule must be an array.' }); } const result = db.updateScheduleForChannel(channelId, schedule); return reply.send(result); });
+fastify.delete('/api/channels/:id', async (req) => db.deleteChannel(req.params.id));
+fastify.post('/api/channels/:id/schedule', async (req, reply) => { const result = db.updateScheduleForChannel(req.params.id, req.body.schedule); return reply.send(result); });
 fastify.post('/api/channels/:id/schedule/add', async (req, reply) => { const channelId = req.params.id; const { mediaId } = req.body; if (!mediaId) { return reply.code(400).send({ message: 'mediaId is required.' }); } const result = db.addMediaToChannelSchedule(channelId, mediaId); if (result.success) { return reply.send(result.item); } return reply.code(404).send({ message: result.message }); });
+
+// NEW: Route to add multiple items to a channel's schedule
 fastify.post('/api/channels/:id/schedule/add-bulk', async (req, reply) => {
     const channelId = req.params.id;
     const { mediaIds } = req.body;
@@ -67,18 +46,12 @@ fastify.post('/api/channels/:id/schedule/add-bulk', async (req, reply) => {
     return reply.send(result);
 });
 
-// System Route
-fastify.post('/api/shutdown', async (req, reply) => {
-    fastify.log.info('Received shutdown request. Shutting down server...');
-    reply.send({ message: 'Shutting down BoomServer.' });
-    setTimeout(() => process.exit(0), 500);
-});
 
 const start = async () => {
   try {
     const port = 8000;
     const host = '0.0.0.0';
-    db.initialize(); // This will now work correctly
+    db.initialize();
     await fastify.listen({ port, host });
     const listenAddress = `http://localhost:${port}`;
     fastify.log.info(`Server listening on ${listenAddress}`);
@@ -88,5 +61,4 @@ const start = async () => {
     process.exit(1);
   }
 };
-
 start();
