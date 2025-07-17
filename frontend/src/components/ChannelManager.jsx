@@ -17,7 +17,12 @@ function ChannelManager({ channels, onUpdate }) {
     const handleSaveChannel = (id, data) => { fetch(`${API_URL}/api/channels/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(() => { handleCloseEditor(); onUpdate(); }); };
     const handleAddChannel = () => { if (!newName || !newNumber) { alert('Channel Name and Number are required.'); return; } fetch(`${API_URL}/api/channels`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, number: newNumber, thumbnail: newThumbnail }), }).then(() => { setNewName(''); setNewNumber(''); setNewThumbnail(''); onUpdate(); }); };
     const handleDeleteChannel = (id) => { if (window.confirm('Are you sure you want to delete this channel and its schedule?')) { fetch(`${API_URL}/api/channels/${id}`, { method: 'DELETE' }).then(() => onUpdate()); } };
-    const handleGenerateM3U = (channel) => { const url = `${API_URL}/m3u/${channel.id}/${channel.m3uFileName}`; window.open(url, '_blank'); };
+    
+    const handleGenerateM3U = (channel) => {
+        const filename = channel.m3uFileName || 'playlist.m3u';
+        const url = `${API_URL}/m3u/${channel.id}/${filename}`;
+        window.open(url, '_blank');
+    };
 
     return (
         <Box>
@@ -51,5 +56,4 @@ function ChannelManager({ channels, onUpdate }) {
         </Box>
     );
 }
-
 export default ChannelManager;

@@ -41,5 +41,4 @@ function ChannelEditor({ channel, open, onClose, onSave }) {
     </Modal>
   );
 }
-
 export default ChannelEditor;
